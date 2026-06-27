@@ -1,0 +1,351 @@
+import math
+import os
+from generate_configs import *
+
+model = "gpt-3-175B"
+
+dhead = 128
+data_size = 2  # FP 16, 2 bytes
+
+n_attacc = 8
+max_n_hbm = 8
+n_hbm = 5
+n_channel = 16
+n_pch = 2
+n_rank = 2
+n_bank = 4
+n_bg = 4
+n_row = pow(2, 14)
+n_col = pow(2, 5)
+prefetch_size = 32  # byte
+n_mac = 16
+
+# Granularity size
+HBM_GS = {}
+HBM_GS['col'] = prefetch_size
+HBM_GS['row'] = n_col * HBM_GS['col']
+HBM_GS['ba'] = n_row * HBM_GS['row']
+HBM_GS['bg'] = n_bank * HBM_GS['ba']
+HBM_GS['rank'] = n_bg * HBM_GS['bg']
+HBM_GS['pch'] = n_rank * HBM_GS['rank']
+HBM_GS['ch'] = n_pch * HBM_GS['pch']
+HBM_GS['hbm'] = n_channel * HBM_GS['ch']
+HBM_GS['attacc'] = max_n_hbm * HBM_GS['hbm']
+PIM_GROUP_SIZE = (n_pch * n_rank * n_bg * n_bank)
+
+
+cmd_score_wrgb = []
+cmd_score_mac = []
+cmd_score_mvsb = []
+cmd_sfm = []
+cmd_context_mvgb = []
+cmd_context_mac = []
+cmd_context_mvsb = []
+cmd_context_ld = []
+cmd_context_ret = []
+
+valid_channels = []
+mode = "kernel"
+
+def set_mode_attn(new_mode):
+  global mode
+  if new_mode in ["kernel", "inference"]:
+    mode = new_mode
+  else:
+    raise ValueError(f"Invalid mode {new_mode}")
+
+
+def cmd_list_reset():
+  global cmd_score_wrgb
+  global cmd_score_mac
+  global cmd_score_mvsb
+  global cmd_sfm
+  global cmd_context_mvgb
+  global cmd_context_mac
+  global cmd_context_mvsb
+  global cmd_context_ld
+  global cmd_context_ret
+
+  cmd_score_wrgb = []
+  cmd_score_mac = []
+  cmd_score_mvsb = []
+  cmd_sfm = []
+  cmd_context_mvgb = []
+  cmd_context_mac = []
+  cmd_context_mvsb = []
+  cmd_context_ld = []
+  cmd_context_ret = []
+
+
+def gen_yaml(trace_path):
+  raw = """Frontend:
+  impl: PIMLoadStoreTrace
+  path: PATH_TO_TRACE
+  clock_ratio: 1
+
+  Translation:
+    impl: NoTranslation
+    max_addr: 2147483648
+
+
+MemorySystem:
+  impl: PIMDRAM
+  clock_ratio: 1
+  DRAM:
+    impl: HBM3-PIM
+    org:
+      preset: HBM3_8Gb_2R
+      channel: 16
+    timing:
+      preset: HBM3_5.2Gbps
+      #preset: HBM3_5.2Gbps_NPC
+
+  Controller:
+    impl: HBM3-PIM
+    Scheduler:
+      impl: PIM
+    RefreshManager:
+      impl: AllBankHBM3
+      #impl: No
+    plugins:
+    - ControllerPlugin:
+        impl: HBM3TraceRecorder
+        path: ./temp/log/attacc_bank/cmd.log
+
+  AddrMapper:
+    impl: HBM3-PIM
+  """
+  new = raw.replace("PATH_TO_TRACE", os.path.abspath(trace_path))
+  yaml_path = trace_path.replace(".trace", ".yaml")
+  with open(yaml_path, 'w') as f:
+    f.write(new)
+
+
+
+def attention(tiling, Vec_addr, Mat_addr, Ret_addr, itr, valid_channel=n_channel):
+  tiling = match_alignment(tiling)
+  cmd_score_wrgb.append([])
+  cmd_score_mac.append([])
+  cmd_score_mvsb.append([])
+  cmd_sfm.append([])
+  cmd_context_mvgb.append([])
+  cmd_context_mac.append([])
+  cmd_context_mvsb.append([])
+  cmd_context_ld.append([])
+  cmd_context_ret.append([])
+
+  valid_channels.append(valid_channel)
+
+  def data_LD(addr_offset, T):
+    barrier = []
+    for lch in range(n_channel):
+      addr = lch * HBM_GS['ch']
+      hex_addr = hex(addr)[2:]
+      barrier.append("PIM_BARRIER 0x{0:0>8}".format(hex_addr))
+
+    N_Round = 16
+    last_pos = 0
+    if mode == "kernel":
+      for pos in range(math.ceil(T[0][2] * T[1][2] / n_mac)):
+        for ba_idx in range(T[0][1] * T[1][1] * T[2][1]):
+          for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+            addr = addr_offset + lch_idx * HBM_GS['ch'] + ba_idx * HBM_GS['ba'] + pos * prefetch_size
+            hex_addr = hex(addr)[2:]
+            cmd_context_ld[itr].append("LD 0x{0:0>8}".format(hex_addr))
+        if (pos % N_Round == N_Round - 1 or pos + 1 == math.ceil(T[0][2] * T[1][2] / n_mac)):
+          cmd_context_ld[itr] += barrier
+          for ba_idx in range(T[0][1] * T[1][1] * T[2][1]):
+            for spos in range(last_pos, pos + 1):
+              for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+                addr = addr_offset + lch_idx * HBM_GS['ch'] + ba_idx * HBM_GS['ba'] + spos * prefetch_size
+                hex_addr = hex(addr)[2:]
+                cmd_context_ld[itr].append("ST 0x{0:0>8}".format(hex_addr))
+          last_pos = pos + 1
+          cmd_context_ld[itr] += barrier
+    else:
+      # inference version: load from GPU shared memory
+      for pos in range(math.ceil(T[0][2] * T[1][2] / n_mac)):
+        for ba_idx in range(T[0][1] * T[1][1] * T[2][1]):
+          for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+            addr = addr_offset + lch_idx * HBM_GS['ch'] + ba_idx * HBM_GS['ba'] + pos * prefetch_size
+            hex_addr = hex(addr)[2:]
+            cmd_context_ld[itr].append("ST 0x{0:0>8}".format(hex_addr))
+
+
+
+  def data_Ret(addr_offset, T):
+    for pos in range(math.ceil(T[0][2] * T[1][2] / n_mac)):
+      for ba_idx in range(T[0][1] * T[1][1] * T[2][1]):
+        for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+          addr = addr_offset + lch_idx * HBM_GS['ch'] + ba_idx * HBM_GS['ba'] + pos * prefetch_size
+          hex_addr = hex(addr)[2:]
+          cmd_context_ret[itr].append("ST 0x{0:0>8}".format(hex_addr))
+
+  def score_mac(Vec_addr, Mat_addr, Ret_addr, T):
+    for pos1 in range(T[0][2]):
+      cmd_score_wrgb[itr].append([])
+      for pos2 in range(T[1][2]):
+        pos = pos1 * T[1][2] + pos2
+        if pos % n_mac == 0:
+          for ba_idx in range(T[0][1] * T[1][1] * T[2][1]):
+            for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+              addr = Vec_addr + lch_idx * HBM_GS['ch'] + ba_idx * HBM_GS['ba'] + pos
+              hex_addr = hex(addr)[2:]
+              cmd_score_wrgb[itr][-1].append("PIM_WR_GB 0x{0:0>8}".format(hex_addr))
+
+    for pos2 in range(T[2][2]):
+      for pos1 in range(math.ceil(T[1][2] / n_mac)):
+        pos = pos1 + pos2 * math.ceil(T[1][2] / n_mac)
+        for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+          addr = Mat_addr + lch_idx * HBM_GS['ch'] + pos * HBM_GS['col']
+          hex_addr = hex(addr)[2:]
+          cmd_score_mac[itr].append("PIM_MAC_AB 0x{0:0>8}".format(hex_addr))
+
+      if pos2 % n_mac == n_mac - 1 or pos2 == T[2][2] - 1:
+        for bg_idx in range(math.ceil(T[0][1] * T[1][1] * T[2][1] / n_bg)):
+          for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+            addr = lch_idx * HBM_GS['ch'] + bg_idx * HBM_GS['bg']
+            hex_addr = hex(addr)[2:]
+            cmd_context_mvsb[itr].append("PIM_MV_SB 0x{0:0>8}".format(hex_addr))
+
+  def context_mac(Vec_addr, Mat_addr, Ret_addr, T):
+    for pos1 in range(T[0][2]):
+      cmd_context_mvgb[itr].append([])
+      for pos2 in range(T[1][2]):
+        pos = pos1 * T[1][2] + pos2
+        if pos % n_mac == 0:
+          for ba_idx in range(T[0][1] * T[1][1] * T[2][1]):
+            for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+              addr = Vec_addr + lch_idx * HBM_GS['ch'] + ba_idx * HBM_GS['ba'] + pos
+              hex_addr = hex(addr)[2:]
+              cmd_context_mvgb[itr][-1].append("PIM_MV_GB 0x{0:0>8}".format(hex_addr))
+
+    for pos2 in range(T[1][2]):
+      for pos1 in range(math.ceil(T[2][2] / n_mac)):
+        pos = pos1 + pos2 * math.ceil(T[2][2] / n_mac)
+        for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+          addr = Mat_addr + lch_idx * HBM_GS['ch'] + pos * HBM_GS['col']
+          hex_addr = hex(addr)[2:]
+          cmd_score_mac[itr].append("PIM_MAC_AB 0x{0:0>8}".format(hex_addr))
+
+      if pos2 % n_mac == n_mac - 1 or pos2 == T[1][2] - 1:
+        for bg_idx in range(math.ceil(T[0][1] * T[1][1] * T[2][1] / n_bg)):
+          for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
+            addr = Ret_addr + lch_idx * HBM_GS['ch'] + bg_idx * HBM_GS['bg']
+            hex_addr = hex(addr)[2:]
+            cmd_score_mac[itr].append("PIM_MV_SB 0x{0:0>8}".format(hex_addr))
+
+
+  def softmax(T):
+    for pos in range(T[0][1]):
+      for lch in range(math.ceil(valid_channel)):
+        addr = lch * HBM_GS['ch'] + pos * (64 // T[0][1]) *HBM_GS['ba']
+        hex_addr = hex(addr)[2:]
+        cmd_sfm[itr].append("PIM_SFM 0x{0:0>8}".format(hex_addr))
+
+  score_mac(Vec_addr, Mat_addr, Ret_addr, tiling)
+  context_mac(Vec_addr, Mat_addr, Ret_addr, tiling)
+  softmax(tiling)
+  data_LD(Vec_addr, tiling)
+  data_Ret(Ret_addr, tiling)
+
+def total_size(tiling, num_itr):
+  itr_size = math.ceil(tiling[0][2] / num_itr)
+  Mat_size = math.ceil(itr_size * tiling[1][2] * tiling[2][2] * data_size / prefetch_size) * prefetch_size
+  Vec_size = math.ceil(itr_size * tiling[1][2] * data_size / prefetch_size) * prefetch_size
+  Ret_size = math.ceil(itr_size * tiling[1][2] * data_size / prefetch_size) * prefetch_size
+  return itr_size, Vec_size, Mat_size, Ret_size
+
+
+def run_attention(tiling, trace_file_name):
+  num_itr = 1
+  itr_size, Vec_size, Mat_size, Ret_size = total_size(tiling, num_itr)
+  while (num_itr <= tiling[0][2]):
+    itr_size, Vec_size, Mat_size, Ret_size = total_size(tiling, num_itr)
+    if (Vec_size + Mat_size + Ret_size <= HBM_GS["ba"]):
+      break
+    else:
+      num_itr += 1
+
+  real_tiling = tiling.copy()
+  real_tiling[0][2] = itr_size
+
+  cmd_list_reset()
+  ##-- Generate Commands --##
+  for itr in range(num_itr):
+    Mat_addr = 0
+    Key_addr = Mat_addr + Mat_size
+    Ret_addr = Key_addr + Vec_size
+    attention(real_tiling, Mat_addr, Key_addr, Ret_addr, itr)
+
+  ##-- Ovelapping Commands --##
+  total_cmd = []
+  barrier = []
+  for lch in range(n_channel):
+    addr = lch * HBM_GS['ch']
+    hex_addr = hex(addr)[2:]
+    barrier.append("PIM_BARRIER 0x{0:0>8}".format(hex_addr))
+
+  for itr in range(0, num_itr, 2):
+    total_cmd += cmd_context_ld[itr]
+    has_next = (itr + 1) < num_itr
+    if has_next:
+      total_cmd += cmd_context_ld[itr + 1]
+    total_cmd += barrier
+    for j in range(real_tiling[0][2]):
+      total_cmd += cmd_score_wrgb[itr][j]
+      total_cmd += cmd_score_mac[itr]
+    total_cmd += cmd_score_mvsb[itr]
+    if has_next:
+      for j in range(real_tiling[0][2]):
+        total_cmd += cmd_score_wrgb[itr + 1][j]
+      total_cmd += barrier
+      for j in range(real_tiling[0][2]):
+        total_cmd += cmd_score_mac[itr + 1]
+    total_cmd += cmd_sfm[itr]
+    for j in range(real_tiling[0][2]):
+      total_cmd += cmd_context_mvgb[itr][j]
+    if has_next:
+      total_cmd += cmd_score_mvsb[itr + 1]
+      total_cmd += barrier
+
+    for j in range(real_tiling[0][2]):
+      total_cmd += cmd_context_mac[itr]
+
+    if has_next:
+      total_cmd += cmd_sfm[itr + 1]
+      total_cmd += barrier
+      for j in range(real_tiling[0][2]):
+        total_cmd += cmd_context_mvgb[itr + 1][j]
+        total_cmd += cmd_context_mac[itr + 1]
+
+    total_cmd += barrier
+
+    total_cmd += cmd_context_ret[itr]
+    if has_next:
+      total_cmd += cmd_context_ret[itr + 1]
+
+
+  all_cmd_str = "\n".join(total_cmd)
+  with open(trace_file_name, 'w') as trace_file:
+    trace_file.write(all_cmd_str)
+
+  trace_file.close()
+  gen_yaml(trace_file_name)
+
+
+def gen_single_name(config_info, output_dir="./traces"):
+  batch = config_info['batch']
+  dhead = config_info['dhead']
+  nhead = config_info['nhead']
+  L = config_info['seq_len']
+  tiling = config_info['tiling'][0]
+  output_path = f"{output_dir}/GEMV({batch},{nhead},{dhead},{L})_[{tiling[0]}-{tiling[1]}-{tiling[2]}]_bank.trace"
+  return output_path
+
+def gen_single_traces(config_info, output_dir="./traces"):
+  assert len(config_info['tiling']) == 1
+  output_path = gen_single_name(config_info, output_dir)
+  tiling = config_info['tiling'][0]
+  run_attention(tiling, output_path)
+  return output_path

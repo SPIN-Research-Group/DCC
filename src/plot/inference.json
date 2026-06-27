@@ -1,0 +1,87 @@
+{
+  "figure": {
+    "width": 12,
+    "height": 3.2,
+    "title_fontsize": 13,
+    "title_fontweight": "bold",
+    "dpi": 300
+  },
+  "data": {
+    "models": ["GPT-13B", "LLAMA-33B"],
+    "model_labels": ["GPT3-13B", "LLAMA2-33B"],
+    "batchs": [1, 4],
+    "lin_lout": [ [128, 2048], [2048, 128], [2048, 2048]],
+    "devices": ["GPU", "Attacc_base", "Attacc_base+DCC", "Attacc_full", "Attacc_full+DCC"]
+  },
+  "bars": {
+    "width": 0.8,
+    "group_spacing": 0.0,
+    "colors": {
+      "g_matmul": "#A1CCEB",
+      "g_qkv_time": "#F1C49C",
+      "g_prj_time": "#DAE9CE",
+      "g_ff_time": "#EFA8A8",
+      "g_etc": "#FBF9AC"
+    },
+    "patterns": {
+      "g_matmul": "|||",
+      "g_qkv_time": "////",
+      "g_prj_time": "+++|",
+      "g_ff_time": "\\\\\\\\",
+      "g_etc": "...."
+    },
+    "component_labels": {
+      "g_matmul": "Attention",
+      "g_qkv_time": "QKV Generation",
+      "g_prj_time": "Projection",
+      "g_ff_time": "Feed-forward",
+      "g_etc": "Other"
+    },
+    "edgecolor": "black",
+    "edgewidth": 0.3
+  },
+  "axes": {
+    "ylabel": "Normalized Execution Time",
+    "ylabel_fontsize": 11,
+    "ylabel_fontweight": "bold",
+    "ylim_min": 0,
+    "ylim_max": 1.0,
+    "ytick_step": 0.2,
+    "grid_alpha": 0.3,
+    "grid_linestyle": "--",
+    "grid_linewidth": 0.5
+  },
+  "labels": {
+    "device_fontsize": 11,
+    "linlout_fontsize": 11,
+    "linlout_pad": 10,
+    "model_fontsize": 12,
+    "model_fontweight": "bold",
+    "device_label_y": -0.0,
+    "linlout_label_y": -0.59,
+    "model_label_y": 1.09,
+    "show_stack_values": false,
+    "stack_value_fontsize": 4,
+    "stack_value_fontweight": "normal",
+    "stack_value_color": "black",
+    "stack_value_min_height": 0.01,
+    "speedup_fontsize": 9,
+    "speedup_fontweight": "bold",
+    "speedup_color": "darkgreen",
+    "speedup_offset": 0.005
+  },
+  "separators": {
+    "color": "black",
+    "linewidth": 1.0,
+    "end_y": -0.6
+  },
+  "legend": {
+    "fontsize": 12,
+    "ncol": 5,
+    "bbox_to_anchor": [0.5, 1.13],
+    "frameon": false
+  },
+  "layout": {
+    "tight_layout_rect": [0, 0.20, 1, 0.94]
+  }
+}
