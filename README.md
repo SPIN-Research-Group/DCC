@@ -1,9 +1,5 @@
-# DCC-Artifact-Evaluation
+# DCC: Data-Centric Compilation of Machine Learning Kernels for Processing-In-Memory
 
-This repository contains the **code for ISCA artifact evaluation** of the paper:  
-**DCC: Data-Centric Compilation of Machine Learning Kernels for Processing-In-Memory**
-
-It provides a complete pipeline for environment setup, experiment execution, and result visualization to reproduce the Figure 6, 7, 9 in the paper.
 
 ## Hardware Requirements
 The artifact has been rigorously tested and validated on server-class hardware meeting the following minimum specifications:
