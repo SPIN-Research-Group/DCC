@@ -1,4 +1,33 @@
-# DCC: Data-Centric Compilation of Machine Learning Kernels for Processing-In-Memory
+<p align="center">
+  <img src="logo.png" alt="DCC logo" width="300">
+</p>
+
+<h2 align="center">
+  DCC: Data-Centric Compilation of Machine Learning Kernels <br>  
+  for Processing-In-Memory Architectures 
+</h2>
+
+[<i>DCC</i>]([https://arxiv.org/pdf/2511.20834](https://arxiv.org/pdf/2511.15503)) is the first data-centric Machine Learning compiler for Processing-In-Memory (PIM) architectures.
+
+High-performance Host processors (e.g., GPUs) can integrate Processing-In-Memory (PIM) devices, which can accelerate memory-intensive kernels of Machine Learning (ML) models, including Large Language Models (LLMs), by leveraging the large memory bandwidth available at PIM cores. However, Host processor and PIM cores require different data layouts: Host processor needs consecutive elements distributed across DRAM banks, while PIM cores need consecutive elements within their local banks. This necessitates data rearrangements in ML kernel execution that pose significant performance and programmability challenges, further exacerbated by the need to support diverse PIM devices (e.g., Samsung HBM-PIM, SK Hynix GDDR6-AiM). Current compilation approaches lack systematic optimization for diverse ML kernels and multiple PIM devices, and may largely ignore data rearrangement costs during the compute code optimization step. We demonstrate that data rearrangements and compute code optimization are interdependent, and need to be jointly optimized during the tuning process. 
+
+DCC is the first data-centric ML compiler for PIM systems that jointly co-optimizes data rearrangements and compute code in a unified tuning process to enable high performance execution. DCC integrates a multi-layer PIM abstraction that enables various data distribution strategies on different PIM backends. DCC enables effective co-optimization of data partitioning strategies with compute loop partitioning schemes. DCC applies PIM-specific code optimizations, and leverages a fast and accurate performance prediction model to select the bestperforming code schedule for a given kernel on a target PIM architecture. DCC provides significant performance benefits across various ML kernels, LLM models, and PIM backends.
+
+## Cite DCC
+
+Please use the following citations to cite DCC, if you find this repository useful:
+
+Bibtex entries for citation:
+```
+@inproceedings{Yang2026DCC,
+author = {Yang, Peiming and Durvasula, Sankeerth and Fernandez, Ivan and Sadrosadati, Mohammad and Mutlu, Onur and Pekhimenko, Gennady and Giannoula, Christina},
+title = {DCC: Data-Centric Compilation of Machine Learning Kernels for Processing-In-Memory Architectures},
+year = {2026},
+booktitle = {Proceedings of the 53rd Annual International Symposium on Computer Architecture},
+location = {Raleigh, NC, USA},
+series = {ISCA '26}
+}
+```
 
 
 ## Hardware Requirements
