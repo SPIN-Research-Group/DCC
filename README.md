@@ -29,8 +29,9 @@ series = {ISCA '26}
 }
 ```
 
+## Quick Start
 
-## Hardware Requirements
+### Hardware Requirements
 The artifact has been rigorously tested and validated on server-class hardware meeting the following minimum specifications:
 
 * CPU: x86-64 architecture with a minimum of 64 hardware threads (32 physical cores with simultaneous multithreading enabled), 128GB of main system memory, and at least 128GB of available disk storage (SSD recommended for optimal I/O performance during simulation)
@@ -38,14 +39,14 @@ The artifact has been rigorously tested and validated on server-class hardware m
 * GPU: NVIDIA discrete GPU with a minimum compute capability (SM version) of 8.0 (Ampere architecture or newer, e.g., A100, RTX 30xx/40xx, A40) and a minimum of 8GB of dedicated GPU memory (VRAM)
 
 
-## Software Requirements
+### Software Requirements
 Before running the scripts, ensure the following dependencies are installed:
 - conda >= 25.6.1 (Anaconda or Miniconda distribution)
 - CMake == 3.16.3 (**strict requirement**)
 - GCC == 11.4.0 (**strict requirement**)
 - CUDA 12.x
   
-## Execution Steps
+### Execution Steps
 #### **Step 1: Prepare environment**  
    First, complete the following pre-configuration steps (steps 1 and 2 can be skipped if the required software is already installed on your system):
    1. Install Anaconda 25.6.1 by following the official instructions at: https://www.anaconda.com/docs/getting-started/main. You may need to run `conda tos accept` after installation to enable conda to create new virtual environment, please refer to https://www.anaconda.com/docs/getting-started/tos-plugin.
@@ -68,3 +69,8 @@ Before running the scripts, ensure the following dependencies are installed:
    All experiment results and generated figures are saved in the following directories:
    * Raw results are saved in `./results`
    * Final plots (reproducing Figures 6, 7, 9 of the paper) are saved in `./figures` directory.
+
+
+## Contact
+
+For any suggestions for improvement, any issues related to Spira source code or for reporting bugs, please contact Peiming Yang at yang44901@gmail.com.
