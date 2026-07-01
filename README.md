@@ -73,4 +73,4 @@ Before running the scripts, ensure the following dependencies are installed:
 
 ## Contact
 
-For any suggestions for improvement, any issues related to Spira source code or for reporting bugs, please contact Peiming Yang at yang44901@gmail.com.
+For any suggestions for improvement, any issues related to DCC source code or for reporting bugs, please contact Peiming Yang at yang44901@gmail.com.
