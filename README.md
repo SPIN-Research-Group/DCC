@@ -23,7 +23,7 @@ Bibtex entries for citation:
 author = {Yang, Peiming and Durvasula, Sankeerth and Fernandez, Ivan and Sadrosadati, Mohammad and Mutlu, Onur and Pekhimenko, Gennady and Giannoula, Christina},
 title = {DCC: Data-Centric Compilation of Machine Learning Kernels for Processing-In-Memory Architectures},
 year = {2026},
-booktitle = {Proceedings of the 53rd Annual International Symposium on Computer Architecture},
+booktitle = {Proceedings of the 53rd Annual International Symposium on Computer Architecture (ISCA)},
 location = {Raleigh, NC, USA},
 series = {ISCA '26}
 }
