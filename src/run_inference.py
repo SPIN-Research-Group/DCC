@@ -119,8 +119,8 @@ def get_args():
                       default=1,
                       help="batch size, default = 1")
   parser.add_argument("--save_path",
-                      type=int,
-                      default=str,
+                      type=str,
+                      default="../results/@inference_results.csv",
                       help="output save path")
 
   args = parser.parse_args()
@@ -204,13 +204,13 @@ def run_group_inference(args):
   perfs = perf_base_dcc + perf_base_baseline + perf_full_dcc + perf_full_baseline + perf_GPU
   names = ["Attacc_base+DCC", "Attacc_base", "Attacc_full+DCC", "Attacc_full", "GPU"]
 
-  write_csv(f"../results/@inference_results.csv", perfs, names)
+  write_csv(args.save_path, perfs, names)
 
 if __name__ == "__main__":
   args = get_args()
 
-  if os.path.exists("../results/@inference_results.csv"):
-    os.remove("../results/@inference_results.csv")
+  if os.path.exists(args.save_path):
+    os.remove(args.save_path)
 
   if not os.path.isdir("./temp/simulation"):
     os.mkdir("./temp/simulation")
