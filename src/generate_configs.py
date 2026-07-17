@@ -112,7 +112,7 @@ def generate_configs_2D(batch, vec_len, output_dir = "./config/"):
   config_info["tiling"] = all_sol
   config_info['batch'] = batch
   config_info['vec_len'] = vec_len
-  f_name = f"./{output_dir}/config({batch}, {vec_len}).json"
+  f_name = f"{output_dir}/config({batch}, {vec_len}).json"
   with open(f_name, "w") as f:
     json.dump(config_info, f, indent=2)
   return f_name
@@ -156,7 +156,5 @@ def match_alignment(T):
   for i in range(0, len(T)):
     for j in range(0, 2):
       v = T[i][j]
-      v -= 1
-      v |= v >> 1 | v >> 2 | v >> 3 | v >> 4 | v >> 5
-      T[i][j] = v + 1
+      T[i][j] = 1 << (v - 1).bit_length() if v > 1 else 1
   return T
