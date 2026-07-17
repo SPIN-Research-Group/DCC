@@ -7,7 +7,7 @@
   for Processing-In-Memory Architectures 
 </h2>
 
-[<i>DCC</i>]([https://arxiv.org/pdf/2511.20834](https://arxiv.org/pdf/2511.15503)) is the first data-centric Machine Learning compiler for Processing-In-Memory (PIM) architectures.
+[<i>DCC</i>](https://arxiv.org/pdf/2511.15503) is the first data-centric Machine Learning compiler for Processing-In-Memory (PIM) architectures.
 
 High-performance Host processors (e.g., GPUs) can integrate Processing-In-Memory (PIM) devices, which can accelerate memory-intensive kernels of Machine Learning (ML) models, including Large Language Models (LLMs), by leveraging the large memory bandwidth available at PIM cores. However, Host processor and PIM cores require different data layouts: Host processor needs consecutive elements distributed across DRAM banks, while PIM cores need consecutive elements within their local banks. This necessitates data rearrangements in ML kernel execution that pose significant performance and programmability challenges, further exacerbated by the need to support diverse PIM devices (e.g., Samsung HBM-PIM, SK Hynix GDDR6-AiM). Current compilation approaches lack systematic optimization for diverse ML kernels and multiple PIM devices, and may largely ignore data rearrangement costs during the compute code optimization step. We demonstrate that data rearrangements and compute code optimization are interdependent, and need to be jointly optimized during the tuning process. 
 
