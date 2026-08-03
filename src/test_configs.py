@@ -66,15 +66,15 @@ def set_mode(workload):
 
 def custom_kernel_sizes(name, batch, input, output=None, nhead=32):
   if name == "ATTN":
-    all_test_sets["attn_single"][1] = generate_test_set([[batch], [nhead], [input], [output]])
+    all_test_sets["attn_single"][0] = generate_test_set([[batch], [nhead], [input], [output]])
   elif name == "GEMV":
-    all_test_sets["gemv_single"][1] = generate_test_set([[batch], [nhead], [input], [output]])
+    all_test_sets["gemv_single"][0] = generate_test_set([[batch], [nhead], [input], [output]])
   elif name == "RED":
-    all_test_sets["red_single"][1] = generate_test_set([[batch], [input]])
+    all_test_sets["red_single"][0] = generate_test_set([[batch], [input]])
   elif name == "VA":
-    all_test_sets["va_single"][1] = generate_test_set([[batch], [input]])
+    all_test_sets["va_single"][0] = generate_test_set([[batch], [input]])
   elif name == "RELU":
-    all_test_sets["relu_single"][1] = generate_test_set([[batch], [input]])
+    all_test_sets["relu_single"][0] = generate_test_set([[batch], [input]])
   else:
     raise ValueError(f"Unknown kernel name: {name}")
 
@@ -85,6 +85,6 @@ def custom_inference_sizes(batch, input, output):
   gemv_sizes += generate_test_set([[1], [batch*8], [5120], [384]])
   gemv_sizes += generate_test_set([[1], [math.ceil(batch*10.4)], [6656], [384]])
   attn_size = generate_test_set([[1], [batch*8, math.ceil(batch*10.4)], [128], [i for i in range(input, input+output+1, 16)]])
-  all_test_sets["attn_inference"][1] = attn_size
-  all_test_sets["gemv_inference"][1] = gemv_sizes
+  all_test_sets["attn_inference"][0] = attn_size
+  all_test_sets["gemv_inference"][0] = gemv_sizes
 
