@@ -226,14 +226,14 @@ def attention(tiling, Vec_addr, Mat_addr, Ret_addr, itr, valid_channel=n_channel
         for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
           addr = Mat_addr + lch_idx * HBM_GS['ch'] + pos * HBM_GS['col']
           hex_addr = hex(addr)[2:]
-          cmd_score_mac[itr].append("PIM_MAC_AB 0x{0:0>8}".format(hex_addr))
+          cmd_context_mac[itr].append("PIM_MAC_AB 0x{0:0>8}".format(hex_addr))
 
       if pos2 % n_mac == n_mac - 1 or pos2 == T[1][2] - 1:
         for bg_idx in range(math.ceil(T[0][1] * T[1][1] * T[2][1] / n_bg)):
           for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
             addr = Ret_addr + lch_idx * HBM_GS['ch'] + bg_idx * HBM_GS['bg']
             hex_addr = hex(addr)[2:]
-            cmd_score_mac[itr].append("PIM_MV_SB 0x{0:0>8}".format(hex_addr))
+            cmd_context_mac[itr].append("PIM_MV_SB 0x{0:0>8}".format(hex_addr))
 
 
   def softmax(T):
