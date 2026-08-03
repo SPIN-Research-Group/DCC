@@ -158,7 +158,7 @@ def run_prediction(df):
             X_df[col_name] = df["tiling"].apply(apply_get_num, args=(i, j))
             X_names.append(col_name)
 
-    X_train, X_test, y_train, y_test = train_test_split(X_df, y_series, test_size=TRAIN_SPLIT, random_state=1358, shuffle=True)
+    X_train, X_test, y_train, y_test = train_test_split(X_df, y_series, train_size=TRAIN_SPLIT, random_state=1358, shuffle=True)
 
     xgb_reg = xgb.XGBRegressor(
         objective='reg:squarederror',
