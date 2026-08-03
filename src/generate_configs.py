@@ -152,9 +152,12 @@ def match_alignment(T):
   elif len(T) == 2:
     if T[0][1] == 1 and T[1][0] == 1 and T[1][1] == 64:
       return T
-
+    
+  limit = [Groups, Cores]
   for i in range(0, len(T)):
     for j in range(0, 2):
       v = T[i][j]
-      T[i][j] = 1 << (v - 1).bit_length() if v > 1 else 1
+      v = 1 << (v - 1).bit_length() if v > 1 else 1
+      if v <= limit[j]:
+        T[i][j] = v
   return T
