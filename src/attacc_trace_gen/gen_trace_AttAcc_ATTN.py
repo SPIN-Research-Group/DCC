@@ -206,7 +206,7 @@ def attention(tiling, Vec_addr, Mat_addr, Ret_addr, itr, valid_channel=n_channel
           for lch_idx in range(T[0][0] * T[1][0] * T[2][0]):
             addr = lch_idx * HBM_GS['ch'] + bg_idx * HBM_GS['bg']
             hex_addr = hex(addr)[2:]
-            cmd_context_mvsb[itr].append("PIM_MV_SB 0x{0:0>8}".format(hex_addr))
+            cmd_score_mvsb[itr].append("PIM_MV_SB 0x{0:0>8}".format(hex_addr))
 
   def context_mac(Vec_addr, Mat_addr, Ret_addr, T):
     for pos1 in range(T[0][2]):
